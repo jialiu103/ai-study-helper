@@ -1,8 +1,22 @@
 // API Configuration - Using secure backend proxy
 const API_ENDPOINT = 'https://throbbing-rice-b8d2.liujiauestc.workers.dev';
 
-// Secure API call helper function - Using Chat Completions format
+// Secure API call helper function - Using Responses API format
 async function callOpenAI(messages, temperature = 0.7, model = 'gpt-4o-mini', maxTokens = 2000) {
+    // Convert messages to Responses API format
+    const input = messages.map(msg => ({
+        type: 'message',
+        role: msg.role,
+        content: Array.isArray(msg.content) 
+            ? msg.content.map(c => {
+                if (typeof c === 'string') return { type: 'input_text', text: c };
+                if (c.type === 'text') return { type: 'input_text', text: c.text };
+                if (c.type === 'image_url') return c; // Keep image_url as is
+                return c;
+              })
+            : [{ type: 'input_text', text: msg.content }]
+    }));
+
     const response = await fetch(API_ENDPOINT, {
         method: 'POST',
         headers: {
@@ -10,9 +24,9 @@ async function callOpenAI(messages, temperature = 0.7, model = 'gpt-4o-mini', ma
         },
         body: JSON.stringify({
             model: model,
-            messages: messages,
+            input: input,
             temperature: temperature,
-            max_tokens: maxTokens
+            max_output_tokens: maxTokens
         })
     });
 
@@ -20,7 +34,17 @@ async function callOpenAI(messages, temperature = 0.7, model = 'gpt-4o-mini', ma
         throw new Error(`API request failed: ${response.statusText}`);
     }
 
-    return await response.json();
+    const data = await response.json();
+    
+    // Convert Responses API format back to Chat Completions format for compatibility
+    return {
+        choices: [{
+            message: {
+                role: 'assistant',
+                content: data.output?.[0]?.content?.[0]?.text || ''
+            }
+        }]
+    };
 }
 
 // State management
