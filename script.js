@@ -1,17 +1,8 @@
 // API Configuration - Using secure backend proxy
 const API_ENDPOINT = 'https://throbbing-rice-b8d2.liujiauestc.workers.dev';
 
-// Secure API call helper function - Now using Responses API format
+// Secure API call helper function - Using Chat Completions format
 async function callOpenAI(messages, temperature = 0.7, model = 'gpt-4o-mini', maxTokens = 2000) {
-    // Convert messages to Responses API format
-    const input = messages.map(msg => ({
-        type: 'message',
-        role: msg.role,
-        content: Array.isArray(msg.content) 
-            ? msg.content 
-            : [{ type: 'input_text', text: msg.content }]
-    }));
-
     const response = await fetch(API_ENDPOINT, {
         method: 'POST',
         headers: {
@@ -19,9 +10,9 @@ async function callOpenAI(messages, temperature = 0.7, model = 'gpt-4o-mini', ma
         },
         body: JSON.stringify({
             model: model,
-            input: input,
+            messages: messages,
             temperature: temperature,
-            max_output_tokens: maxTokens
+            max_tokens: maxTokens
         })
     });
 
@@ -29,17 +20,7 @@ async function callOpenAI(messages, temperature = 0.7, model = 'gpt-4o-mini', ma
         throw new Error(`API request failed: ${response.statusText}`);
     }
 
-    const data = await response.json();
-    
-    // Convert Responses API format back to Chat Completions format for compatibility
-    return {
-        choices: [{
-            message: {
-                role: 'assistant',
-                content: data.output?.[0]?.content?.[0]?.text || ''
-            }
-        }]
-    };
+    return await response.json();
 }
 
 // State management
@@ -2724,7 +2705,7 @@ async function analyzeImageWriting(imageBase64) {
             role: 'user',
             content: [
                 {
-                    type: 'input_text',
+                    type: 'text',
                     text: `Please analyze the student writing in this image and provide comprehensive feedback:
 
 STEP 1: First, transcribe the EXACT text you see in the image (including all errors).
@@ -2764,7 +2745,7 @@ SUGGESTIONS: [Specific suggestions for making the writing better]
 REVISED: [Provide an improved version of their writing, keeping their voice but fixing issues]`
                 },
                 {
-                    type: 'input_image',
+                    type: 'image_url',
                     image_url: {
                         url: imageBase64
                     }
