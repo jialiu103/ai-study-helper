@@ -1,5 +1,46 @@
-// API Configuration - Add your OpenAI API key from https://platform.openai.com
-const OPENAI_API_KEY = 'YOUR_OPENAI_API_KEY_HERE';
+// API Configuration - Using secure backend proxy
+const API_ENDPOINT = 'https://throbbing-rice-b8d2.liujiauestc.workers.dev';
+
+// Secure API call helper function - Now using Responses API format
+async function callOpenAI(messages, temperature = 0.7, model = 'gpt-4o-mini', maxTokens = 2000) {
+    // Convert messages to Responses API format
+    const input = messages.map(msg => ({
+        type: 'message',
+        role: msg.role,
+        content: Array.isArray(msg.content) 
+            ? msg.content 
+            : [{ type: 'input_text', text: msg.content }]
+    }));
+
+    const response = await fetch(API_ENDPOINT, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            model: model,
+            input: input,
+            temperature: temperature,
+            max_output_tokens: maxTokens
+        })
+    });
+
+    if (!response.ok) {
+        throw new Error(`API request failed: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    
+    // Convert Responses API format back to Chat Completions format for compatibility
+    return {
+        choices: [{
+            message: {
+                role: 'assistant',
+                content: data.output?.[0]?.content?.[0]?.text || ''
+            }
+        }]
+    };
+}
 
 // State management
 let vocabularyList = [];
@@ -1415,22 +1456,14 @@ async function generateVocabularyQuiz(words) {
     quizSection.classList.remove('hidden');
     
     try {
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${OPENAI_API_KEY}`
+        const data = await callOpenAI([
+            {
+                role: 'system',
+                content: 'You are a teacher creating engaging multiple-choice vocabulary questions for students.'
             },
-            body: JSON.stringify({
-                model: 'gpt-5-chat-latest',
-                messages: [
-                    {
-                        role: 'system',
-                        content: 'You are a teacher creating engaging multiple-choice vocabulary questions for students.'
-                    },
-                    {
-                        role: 'user',
-                        content: `Create DIVERSE and FUN vocabulary quiz questions for these words: ${words.join(', ')}
+            {
+                role: 'user',
+                content: `Create DIVERSE and FUN vocabulary quiz questions for these words: ${words.join(', ')}
 
 CRITICAL RULES:
 1. For EACH word, create 2-3 questions using VARIED question types
@@ -1469,16 +1502,8 @@ IMPORTANT: For wrongAnswerExplanations array, explain why each wrong option is i
 Example variety:
 - "resilient" → definition (MC), fill_blank ("Despite setbacks, she remained ___ and kept trying."), match (pair word with definition)
 - "arduous" → usage (MC), synonym (MC), fill_blank ("The ___ journey took three days.")`
-                    }
-                ],
-                temperature: 0.7,
-                max_tokens: 2000
-            })
-        });
-
-        if (!response.ok) throw new Error('Failed to generate quiz');
-
-        const data = await response.json();
+            }
+        ], 0.7, 'gpt-4o-mini');
         const content = data.choices[0].message.content.trim();
         
         // Parse JSON from response
@@ -1825,35 +1850,16 @@ Instructions:
 
 Write ONLY the story text with paragraphs separated by double newlines. No explanations or notes.`;
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${OPENAI_API_KEY}`
+    const data = await callOpenAI([
+        {
+            role: 'system',
+            content: 'You are an expert creative writing teacher. Write grammatically perfect, coherent stories that help students learn vocabulary words through engaging narratives.'
         },
-        body: JSON.stringify({
-            model: 'gpt-5-chat-latest',
-            messages: [
-                {
-                    role: 'system',
-                    content: 'You are an expert creative writing teacher. Write grammatically perfect, coherent stories that help students learn vocabulary words through engaging narratives.'
-                },
-                {
-                    role: 'user',
-                    content: prompt
-                }
-            ],
-            temperature: 0.7,
-            max_tokens: 1500
-        })
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error?.message || `API request failed (${response.status}). Check your API key.`);
-    }
-
-    const data = await response.json();
+        {
+            role: 'user',
+            content: prompt
+        }
+    ], 0.7, 'gpt-4o-mini', 1500);
     let storyText = data.choices[0].message.content.trim();
     
     // Track which words were used
@@ -2154,37 +2160,21 @@ async function fetchWordImage(word) {
     
     try {
         // Use OpenAI to get a direct, literal visual representation
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${OPENAI_API_KEY}`
+        const data = await callOpenAI([
+            {
+                role: 'system',
+                content: 'You provide direct, literal search queries for images. If the word is a noun, use the noun itself. If abstract, provide the most concrete, literal visual representation.'
             },
-            body: JSON.stringify({
-                model: 'gpt-5-chat-latest',
-                messages: [
-                    {
-                        role: 'system',
-                        content: 'You provide direct, literal search queries for images. If the word is a noun, use the noun itself. If abstract, provide the most concrete, literal visual representation.'
-                    },
-                    {
-                        role: 'user',
-                        content: `For the word "${word}", what is the MOST DIRECT and LITERAL thing to search for an image?
+            {
+                role: 'user',
+                content: `For the word "${word}", what is the MOST DIRECT and LITERAL thing to search for an image?
 - If it's a concrete noun (like "royalty"), respond with what represents it (e.g., "king queen crown")
 - If it's a verb (like "running"), respond with the action (e.g., "person running")
 - If it's an adjective (like "beautiful"), respond with something that exemplifies it (e.g., "beautiful landscape")
 - Keep it simple, concrete, and visual. 2-3 words maximum.
 Just respond with the search query, nothing else.`
-                    }
-                ],
-                temperature: 0.2,
-                max_tokens: 20
-            })
-        });
-        
-        if (!response.ok) throw new Error('Failed to get image search query');
-        
-        const data = await response.json();
+            }
+        ], 0.2, 'gpt-4o-mini', 20);
         const searchQuery = data.choices[0].message.content.trim().replace(/['"]/g, '');
         
         console.log(`Image search - Word: "${word}", Query: "${searchQuery}"`);
@@ -2264,22 +2254,14 @@ function formatStems(stemsText) {
 
 // Fetch comprehensive word details using OpenAI
 async function fetchWordDetails(word) {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${OPENAI_API_KEY}`
+    const data = await callOpenAI([
+        {
+            role: 'system',
+            content: 'You are an expert vocabulary teacher and linguist. Provide comprehensive, educational word information that helps students deeply understand and remember vocabulary.'
         },
-        body: JSON.stringify({
-            model: 'gpt-5-chat-latest',
-            messages: [
-                {
-                    role: 'system',
-                    content: 'You are an expert vocabulary teacher and linguist. Provide comprehensive, educational word information that helps students deeply understand and remember vocabulary.'
-                },
-                {
-                    role: 'user',
-                    content: `Provide complete information for the word "${word}":
+        {
+            role: 'user',
+            content: `Provide complete information for the word "${word}":
 
 1. PRONUNCIATION: Phonetic spelling (e.g., /ˈwɜːrd/) 
 2. PART OF SPEECH: (noun, verb, adjective, etc.)
@@ -2299,16 +2281,8 @@ Example: [sentence]
 Synonyms: [synonyms]
 Antonyms: [antonyms]
 Stems: [detailed explanation of word stems, prefixes, suffixes, and related words with the same pattern]`
-                }
-            ],
-            temperature: 0.3,
-            max_tokens: 500
-        })
-    });
-
-    if (!response.ok) throw new Error('Failed to fetch word details');
-
-    const data = await response.json();
+        }
+    ], 0.3, 'gpt-4o-mini', 500);
     const text = data.choices[0].message.content.trim();
     
     console.log('AI Response for word details:', text);
@@ -2741,25 +2715,17 @@ analyzeWritingBtn?.addEventListener('click', async () => {
 
 // Analyze image writing using AI Vision with detailed error correction
 async function analyzeImageWriting(imageBase64) {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${OPENAI_API_KEY}`
+    const data = await callOpenAI([
+        {
+            role: 'system',
+            content: 'You are an expert writing teacher. Carefully read the text in the image and identify ALL errors (spelling, grammar, punctuation, word choice, etc.). List each error with its correction and explanation. Be thorough and educational.'
         },
-        body: JSON.stringify({
-            model: 'gpt-4o',
-            messages: [
+        {
+            role: 'user',
+            content: [
                 {
-                    role: 'system',
-                    content: 'You are an expert writing teacher. Carefully read the text in the image and identify ALL errors (spelling, grammar, punctuation, word choice, etc.). List each error with its correction and explanation. Be thorough and educational.'
-                },
-                {
-                    role: 'user',
-                    content: [
-                        {
-                            type: 'text',
-                            text: `Please analyze the student writing in this image and provide comprehensive feedback:
+                    type: 'input_text',
+                    text: `Please analyze the student writing in this image and provide comprehensive feedback:
 
 STEP 1: First, transcribe the EXACT text you see in the image (including all errors).
 
@@ -2796,26 +2762,16 @@ GRAMMAR: [Comment on grammar, punctuation, spelling, and mechanics. If handwritt
 SUGGESTIONS: [Specific suggestions for making the writing better]
 
 REVISED: [Provide an improved version of their writing, keeping their voice but fixing issues]`
-                        },
-                        {
-                            type: 'image_url',
-                            image_url: {
-                                url: imageBase64
-                            }
-                        }
-                    ]
+                },
+                {
+                    type: 'input_image',
+                    image_url: {
+                        url: imageBase64
+                    }
                 }
-            ],
-            max_tokens: 1500
-        })
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error?.message || 'Failed to analyze image. Please check your API key.');
-    }
-
-    const data = await response.json();
+            ]
+        }
+    ], 0.5, 'gpt-4o', 1500);
     const feedbackText = data.choices[0].message.content.trim();
     
     return parseFeedback(feedbackText);
@@ -2823,22 +2779,14 @@ REVISED: [Provide an improved version of their writing, keeping their voice but 
 
 // Analyze writing using AI
 async function analyzeWriting(text) {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${OPENAI_API_KEY}`
+    const data = await callOpenAI([
+        {
+            role: 'system',
+            content: 'You are a helpful writing teacher providing constructive feedback to students. Be encouraging but honest. Focus on grammar, style, clarity, and structure.'
         },
-        body: JSON.stringify({
-            model: 'gpt-5-chat-latest',
-            messages: [
-                {
-                    role: 'system',
-                    content: 'You are a helpful writing teacher providing constructive feedback to students. Be encouraging but honest. Focus on grammar, style, clarity, and structure.'
-                },
-                {
-                    role: 'user',
-                    content: `Please analyze this student writing and provide detailed feedback in the following format:
+        {
+            role: 'user',
+            content: `Please analyze this student writing and provide detailed feedback in the following format:
 
 STUDENT WRITING:
 "${text}"
@@ -2862,18 +2810,8 @@ GRAMMAR: [Comment on grammar, punctuation, and mechanics]
 SUGGESTIONS: [Specific suggestions for making the writing better]
 
 REVISED: [Provide an improved version of their writing, keeping their voice but fixing issues]`
-                }
-            ],
-            temperature: 0.5,
-            max_tokens: 1000
-        })
-    });
-
-    if (!response.ok) {
-        throw new Error('Failed to analyze writing. Please check your API key.');
-    }
-
-    const data = await response.json();
+        }
+    ], 0.5, 'gpt-4o-mini', 1000);
     const feedbackText = data.choices[0].message.content.trim();
     
     return parseFeedback(feedbackText);
