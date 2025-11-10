@@ -36,12 +36,21 @@ async function callOpenAI(messages, temperature = 0.7, model = 'gpt-4o-mini', ma
 
     const data = await response.json();
     
+    console.log('Raw API response:', JSON.stringify(data).substring(0, 200));
+    
     // Convert Responses API format back to Chat Completions format for compatibility
+    const content = data.output?.[0]?.content?.[0]?.text || '';
+    
+    if (!content) {
+        console.error('Failed to extract content from response:', data);
+        throw new Error('Invalid API response format');
+    }
+    
     return {
         choices: [{
             message: {
                 role: 'assistant',
-                content: data.output?.[0]?.content?.[0]?.text || ''
+                content: content
             }
         }]
     };
