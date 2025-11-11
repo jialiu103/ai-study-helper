@@ -149,23 +149,37 @@ addVocabBtn.addEventListener('click', async () => {
         const definitions = await getVocabularyDefinitions([word]);
         const def = definitions[0];
         
-        // Display the definition with all meanings
+        // Group meanings by part of speech
+        const groupedMeanings = {};
+        def.meanings.forEach(meaning => {
+            const pos = meaning.partOfSpeech;
+            if (!groupedMeanings[pos]) {
+                groupedMeanings[pos] = [];
+            }
+            groupedMeanings[pos].push(meaning);
+        });
+        
+        // Display the definition with meanings grouped by part of speech
         definitionsContent.innerHTML = `
             <div class="definition-header">
                 <div class="definition-word">${def.word}</div>
                 <div class="definition-pronunciation">${def.pronunciation || ''}</div>
             </div>
             <div class="meanings-list">
-                ${def.meanings.map((meaning, index) => `
-                    <div class="meaning-card">
-                        <div class="meaning-number">${index + 1}</div>
-                        <div class="meaning-content">
-                            <div class="definition-pos">${meaning.partOfSpeech}</div>
-                            <div class="definition-meaning">${meaning.definition}</div>
-                            <div class="definition-example">"${meaning.example}"</div>
-                            ${meaning.synonyms ? `<div class="definition-synonyms"><strong>Synonyms:</strong> ${meaning.synonyms}</div>` : ''}
-                            ${meaning.antonyms ? `<div class="definition-antonyms"><strong>Antonyms:</strong> ${meaning.antonyms}</div>` : ''}
-                        </div>
+                ${Object.entries(groupedMeanings).map(([pos, meanings]) => `
+                    <div class="pos-section">
+                        <div class="pos-separator">${pos}</div>
+                        ${meanings.map((meaning, index) => `
+                            <div class="meaning-item">
+                                ${meanings.length > 1 ? `<div class="meaning-number">${index + 1}.</div>` : ''}
+                                <div class="meaning-content">
+                                    <div class="definition-meaning">${meaning.definition}</div>
+                                    <div class="definition-example">"${meaning.example}"</div>
+                                    ${meaning.synonyms ? `<div class="definition-synonyms"><strong>Synonyms:</strong> ${meaning.synonyms}</div>` : ''}
+                                    ${meaning.antonyms ? `<div class="definition-antonyms"><strong>Antonyms:</strong> ${meaning.antonyms}</div>` : ''}
+                                </div>
+                            </div>
+                        `).join('')}
                     </div>
                 `).join('')}
             </div>
