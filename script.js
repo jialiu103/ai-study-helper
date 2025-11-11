@@ -147,18 +147,29 @@ addVocabBtn.addEventListener('click', async () => {
     try {
         // Get definition for the word
         const definitions = await getVocabularyDefinitions([word]);
+        const def = definitions[0];
         
-        // Display the definition
-        definitionsContent.innerHTML = definitions.map(def => `
-            <div class="definition-card">
+        // Display the definition with all meanings
+        definitionsContent.innerHTML = `
+            <div class="definition-header">
                 <div class="definition-word">${def.word}</div>
                 <div class="definition-pronunciation">${def.pronunciation || ''}</div>
-                <div class="definition-pos">${def.partOfSpeech}</div>
-                <div class="definition-meaning">${def.definition}</div>
-                <div class="definition-example">"${def.example}"</div>
-                ${def.synonyms ? `<div class="definition-synonyms"><strong>Synonyms:</strong> ${def.synonyms}</div>` : ''}
             </div>
-        `).join('');
+            <div class="meanings-list">
+                ${def.meanings.map((meaning, index) => `
+                    <div class="meaning-card">
+                        <div class="meaning-number">${index + 1}</div>
+                        <div class="meaning-content">
+                            <div class="definition-pos">${meaning.partOfSpeech}</div>
+                            <div class="definition-meaning">${meaning.definition}</div>
+                            <div class="definition-example">"${meaning.example}"</div>
+                            ${meaning.synonyms ? `<div class="definition-synonyms"><strong>Synonyms:</strong> ${meaning.synonyms}</div>` : ''}
+                            ${meaning.antonyms ? `<div class="definition-antonyms"><strong>Antonyms:</strong> ${meaning.antonyms}</div>` : ''}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
         
         // Show output
         definitionsOutput.classList.remove('hidden');
@@ -1776,36 +1787,57 @@ async function retryIncorrectWords() {
 
 // Get vocabulary definitions using AI
 async function getVocabularyDefinitions(words) {
-    const prompt = `Provide clear, student-friendly definitions for these vocabulary words: ${words.join(', ')}
+    const prompt = `Provide comprehensive definitions for this word: ${words.join(', ')}
 
-For each word, provide:
-1. The word itself
-2. Part of speech (noun, verb, adjective, etc.)
-3. Clear definition (one sentence)
-4. An example sentence using the word
-5. 2-3 common synonyms
-6. Pronunciation guide (if helpful)
+IMPORTANT: Include ALL common meanings/definitions for this word, ordered from MOST commonly used to LEAST commonly used.
 
-Format as JSON array with this structure:
-[
-  {
-    "word": "example",
-    "partOfSpeech": "noun",
-    "definition": "a thing serving as a pattern or model",
-    "example": "She set a good example for her classmates.",
-    "synonyms": "model, specimen, illustration",
-    "pronunciation": "ig-ZAM-puhl"
-  }
-]
+For each meaning, provide:
+1. Part of speech (noun, verb, adjective, adverb, etc.)
+2. Clear definition (one concise sentence)
+3. An example sentence showing how it's used in context
+4. 2-3 common synonyms (if applicable)
+5. 2-3 antonyms (if applicable)
 
-Return ONLY the JSON array, no other text.`;
+Also include:
+- Pronunciation guide (phonetic spelling)
+
+Format as JSON with this EXACT structure:
+{
+  "word": "run",
+  "pronunciation": "ruhn",
+  "meanings": [
+    {
+      "partOfSpeech": "verb",
+      "definition": "to move swiftly on foot",
+      "example": "She likes to run every morning.",
+      "synonyms": "sprint, jog, dash",
+      "antonyms": "walk, stop, rest"
+    },
+    {
+      "partOfSpeech": "verb",
+      "definition": "to operate or function",
+      "example": "The engine runs smoothly.",
+      "synonyms": "operate, function, work",
+      "antonyms": "malfunction, break, stop"
+    },
+    {
+      "partOfSpeech": "noun",
+      "definition": "an act of running",
+      "example": "I went for a morning run.",
+      "synonyms": "jog, sprint",
+      "antonyms": "rest, stop"
+    }
+  ]
+}
+
+Return ONLY the JSON object for the FIRST word (${words[0]}), no other text. Include ALL common meanings.`;
 
     const response = await callOpenAI([
         {
             role: 'user',
             content: prompt
         }
-    ], 0.3, 'gpt-4o-mini', 1500);
+    ], 0.3, 'gpt-4o-mini', 2000);
 
     const content = response.choices[0].message.content.trim();
     
@@ -1817,8 +1849,8 @@ Return ONLY the JSON array, no other text.`;
         jsonText = content.split('```')[1].split('```')[0].trim();
     }
     
-    const definitions = JSON.parse(jsonText);
-    return definitions;
+    const definition = JSON.parse(jsonText);
+    return [definition]; // Return as array for compatibility
 }
 
 // Generate story using Groq AI API
