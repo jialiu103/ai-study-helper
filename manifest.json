@@ -1,7 +1,7 @@
 {
-  "name": "AI Study Helper",
-  "short_name": "AI Study",
-  "description": "Learn vocabulary through creative storytelling",
+  "name": "Lexio",
+  "short_name": "Lexio",
+  "description": "Your AI-powered learning companion for vocabulary, writing, and more",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#667eea",
