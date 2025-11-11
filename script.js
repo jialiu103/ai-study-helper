@@ -95,10 +95,6 @@ function getEmptyWeek() {
 // DOM elements
 const vocabInput = document.getElementById('vocab-input');
 const addVocabBtn = document.getElementById('add-vocab-btn');
-const wordList = document.getElementById('word-list');
-const wordCount = document.getElementById('word-count');
-const clearListBtn = document.getElementById('clear-list-btn');
-const generateDefinitionsBtn = document.getElementById('generate-definitions-btn');
 const definitionsOutput = document.getElementById('definitions-output');
 const definitionsContent = document.getElementById('definitions-content');
 
@@ -135,22 +131,49 @@ function addVocabularyWord(word) {
     vocabInput.value = '';
 }
 
-// Handle add button click
-addVocabBtn.addEventListener('click', () => {
-    const input = vocabInput.value;
+// Handle Go button click - directly fetch definition
+addVocabBtn.addEventListener('click', async () => {
+    const word = vocabInput.value.trim().toLowerCase();
     
-    // Check if input contains commas (multiple words)
-    if (input.includes(',')) {
-        const words = input.split(',').map(w => w.trim().toLowerCase()).filter(w => w);
-        words.forEach(word => {
-            if (!vocabularyList.includes(word)) {
-                vocabularyList.push(word);
-            }
-        });
-        updateWordList();
+    if (!word) {
+        alert('Please enter a word!');
+        return;
+    }
+    
+    // Show loading state
+    addVocabBtn.disabled = true;
+    addVocabBtn.innerHTML = '<span class="loading">🤖 Getting definition...</span>';
+    
+    try {
+        // Get definition for the word
+        const definitions = await getVocabularyDefinitions([word]);
+        
+        // Display the definition
+        definitionsContent.innerHTML = definitions.map(def => `
+            <div class="definition-card">
+                <div class="definition-word">${def.word}</div>
+                <div class="definition-pronunciation">${def.pronunciation || ''}</div>
+                <div class="definition-pos">${def.partOfSpeech}</div>
+                <div class="definition-meaning">${def.definition}</div>
+                <div class="definition-example">"${def.example}"</div>
+                ${def.synonyms ? `<div class="definition-synonyms"><strong>Synonyms:</strong> ${def.synonyms}</div>` : ''}
+            </div>
+        `).join('');
+        
+        // Show output
+        definitionsOutput.classList.remove('hidden');
+        definitionsOutput.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        
+        // Clear input
         vocabInput.value = '';
-    } else {
-        addVocabularyWord(input);
+        
+    } catch (error) {
+        console.error('Error getting definition:', error);
+        alert('❌ Error getting definition: ' + error.message);
+    } finally {
+        // Reset button
+        addVocabBtn.disabled = false;
+        addVocabBtn.innerHTML = 'Go';
     }
 });
 
@@ -158,38 +181,6 @@ addVocabBtn.addEventListener('click', () => {
 vocabInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
         addVocabBtn.click();
-    }
-});
-
-// Update word list display
-function updateWordList() {
-    wordList.innerHTML = '';
-    wordCount.textContent = vocabularyList.length;
-    
-    vocabularyList.forEach((word, index) => {
-        const li = document.createElement('li');
-        li.className = 'word-item';
-        li.innerHTML = `
-            <span>${word}</span>
-            <button class="remove-word" onclick="removeWord(${index})">×</button>
-        `;
-        wordList.appendChild(li);
-    });
-}
-
-// Remove word from list
-function removeWord(index) {
-    vocabularyList.splice(index, 1);
-    updateWordList();
-}
-
-// Clear all words
-clearListBtn.addEventListener('click', () => {
-    if (vocabularyList.length === 0) return;
-    
-    if (confirm('Are you sure you want to clear all words?')) {
-        vocabularyList = [];
-        updateWordList();
     }
 });
 
@@ -1782,50 +1773,6 @@ async function retryIncorrectWords() {
 }
 
 // ========== END QUIZ SYSTEM ==========
-
-// Generate definitions with AI
-generateDefinitionsBtn.addEventListener('click', async () => {
-    if (vocabularyList.length === 0) {
-        alert('Please add at least one vocabulary word!');
-        return;
-    }
-    
-    // Show loading state
-    generateDefinitionsBtn.disabled = true;
-    generateDefinitionsBtn.innerHTML = '<span class="loading">🤖 Getting definitions...</span>';
-    
-    try {
-        // Get definitions for all words
-        const definitions = await getVocabularyDefinitions(vocabularyList);
-        
-        // Display the definitions
-        definitionsContent.innerHTML = definitions.map(def => `
-            <div class="definition-card">
-                <div class="definition-word">${def.word}</div>
-                <div class="definition-pronunciation">${def.pronunciation || ''}</div>
-                <div class="definition-pos">${def.partOfSpeech}</div>
-                <div class="definition-meaning">${def.definition}</div>
-                <div class="definition-example">"${def.example}"</div>
-                ${def.synonyms ? `<div class="definition-synonyms"><strong>Synonyms:</strong> ${def.synonyms}</div>` : ''}
-            </div>
-        `).join('');
-        
-        // Track vocabulary usage
-        trackVocabularyUsage(vocabularyList);
-        
-        // Show output
-        definitionsOutput.classList.remove('hidden');
-        definitionsOutput.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        
-    } catch (error) {
-        console.error('Error getting definitions:', error);
-        alert('❌ Error getting definitions: ' + error.message);
-    } finally {
-        // Reset button
-        generateDefinitionsBtn.disabled = false;
-        generateDefinitionsBtn.innerHTML = '📖 Get Definitions';
-    }
-});
 
 // Get vocabulary definitions using AI
 async function getVocabularyDefinitions(words) {

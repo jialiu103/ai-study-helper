@@ -31,25 +31,13 @@
             <!-- Vocabulary Tab -->
             <section id="vocabulary-tab" class="tab-content active">
                 <div class="input-section">
-                    <h2>Enter Your Vocabulary Words</h2>
-                    <p class="instructions">Add words one at a time, or paste a comma-separated list</p>
+                    <h2>Enter a Word</h2>
+                    <p class="instructions">Type any word to get its definition</p>
                     
                     <div class="vocab-input-group">
-                        <input type="text" id="vocab-input" placeholder="Enter a word (e.g., serendipity, ephemeral, jubilant)">
-                        <button id="add-vocab-btn" class="btn btn-primary">Add Word</button>
+                        <input type="text" id="vocab-input" placeholder="Enter a word (e.g., serendipity)">
+                        <button id="add-vocab-btn" class="btn btn-primary">Go</button>
                     </div>
-
-                    <div class="word-list-container">
-                        <h3>Your Vocabulary List (<span id="word-count">0</span> words)</h3>
-                        <ul id="word-list"></ul>
-                        <button id="clear-list-btn" class="btn btn-secondary">Clear List</button>
-                    </div>
-                </div>
-
-                <div class="generation-section">
-                    <button id="generate-definitions-btn" class="btn btn-large btn-primary">
-                        📖 Get Definitions
-                    </button>
                 </div>
 
                 <div id="definitions-output" class="story-output hidden">
