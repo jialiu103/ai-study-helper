@@ -2642,13 +2642,6 @@ document.getElementById('sort-words')?.addEventListener('change', () => {
     renderVocabularyGrid();
 });
 
-// Update story count when generating
-const originalGenerateBtn = generateStoryBtn.onclick;
-generateStoryBtn.addEventListener('click', () => {
-    const currentCount = parseInt(localStorage.getItem('storiesGenerated') || '0');
-    localStorage.setItem('storiesGenerated', currentCount + 1);
-});
-
 // Initialize dashboard when tab is clicked
 document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
