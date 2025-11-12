@@ -2220,40 +2220,6 @@ Write ONLY the story text with paragraphs separated by double newlines. No expla
     };
 }
 
-// Copy story
-if (copyStoryBtn) {
-    copyStoryBtn.addEventListener('click', () => {
-        const text = storyContent.innerText;
-        navigator.clipboard.writeText(text).then(() => {
-            copyStoryBtn.textContent = '✓ Copied!';
-            setTimeout(() => {
-                copyStoryBtn.innerHTML = '📋 Copy';
-            }, 2000);
-        });
-    });
-}
-
-// Save story
-if (saveStoryBtn) {
-    saveStoryBtn.addEventListener('click', () => {
-    const text = storyContent.innerText;
-    const blob = new Blob([text], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `vocabulary-story-${Date.now()}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    saveStoryBtn.textContent = '✓ Saved!';
-    setTimeout(() => {
-        saveStoryBtn.innerHTML = '💾 Save';
-    }, 2000);
-    });
-}
-
 // ========== VOCABULARY TRACKING & DASHBOARD ==========
 
 // Track vocabulary usage when a story is generated
