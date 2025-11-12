@@ -103,6 +103,9 @@ async function saveWordToFirebase(wordData) {
     }
 }
 
+// Store loaded words globally for access
+let savedWords = [];
+
 // Load user's saved words from Firestore
 async function loadUserWords() {
     if (!currentUser || !window.firebaseDb) return;
@@ -114,13 +117,13 @@ async function loadUserWords() {
         const q = query(wordsRef, orderBy('timestamp', 'desc'));
         const snapshot = await getDocs(q);
         
-        const words = [];
+        savedWords = [];
         snapshot.forEach((doc) => {
-            words.push({ id: doc.id, ...doc.data() });
+            savedWords.push({ id: doc.id, ...doc.data() });
         });
         
-        displayMyWords(words);
-        updateWordStats(words);
+        displayMyWords(savedWords);
+        updateWordStats(savedWords);
     } catch (error) {
         console.error('Error loading words:', error);
     }
@@ -168,7 +171,7 @@ function displayMyWords(words) {
     
     grid.querySelectorAll('.view-word-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-            viewWordDetails(btn.dataset.word, words);
+            viewWordDetails(btn.dataset.word);
         });
     });
 }
@@ -207,9 +210,21 @@ async function toggleFavorite(word) {
 }
 
 // View full word details
-function viewWordDetails(word, words) {
-    const wordData = words.find(w => w.word === word);
-    if (!wordData) return;
+function viewWordDetails(word) {
+    const wordData = savedWords.find(w => w.word === word);
+    if (!wordData) {
+        console.error('Word not found:', word);
+        return;
+    }
+    
+    // Switch to Lookup tab and populate definitions
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    
+    const lookupTab = document.querySelector('[data-tab="vocabulary"]');
+    const lookupContent = document.getElementById('vocabulary-tab');
+    if (lookupTab) lookupTab.classList.add('active');
+    if (lookupContent) lookupContent.classList.add('active');
     
     // Populate definitions and show them
     definitionsContent.innerHTML = generateDefinitionHTML(wordData);
