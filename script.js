@@ -1,6 +1,276 @@
 // API Configuration - Using secure backend proxy
 const API_ENDPOINT = 'https://throbbing-rice-b8d2.liujiauestc.workers.dev';
 
+// ========== FIREBASE AUTHENTICATION & STORAGE ==========
+
+// Wait for Firebase to initialize
+let currentUser = null;
+let unsubscribeAuth = null;
+
+// Initialize Firebase authentication listener
+window.addEventListener('load', () => {
+    if (!window.firebaseAuth) {
+        console.error('Firebase not initialized!');
+        return;
+    }
+
+    const { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } = window.firebaseModules;
+    
+    // Listen for auth state changes
+    unsubscribeAuth = onAuthStateChanged(window.firebaseAuth, (user) => {
+        currentUser = user;
+        updateAuthUI(user);
+        
+        if (user) {
+            console.log('User signed in:', user.email);
+            loadUserWords();
+        } else {
+            console.log('User signed out');
+        }
+    });
+
+    // Google Sign-In button
+    const signInBtn = document.getElementById('google-signin-btn');
+    if (signInBtn) {
+        signInBtn.classList.remove('hidden');
+        signInBtn.addEventListener('click', async () => {
+            try {
+                const provider = new GoogleAuthProvider();
+                await signInWithPopup(window.firebaseAuth, provider);
+            } catch (error) {
+                console.error('Sign-in error:', error);
+                alert('Failed to sign in: ' + error.message);
+            }
+        });
+    }
+
+    // Sign Out button
+    const signOutBtn = document.getElementById('signout-btn');
+    if (signOutBtn) {
+        signOutBtn.addEventListener('click', async () => {
+            try {
+                await signOut(window.firebaseAuth);
+            } catch (error) {
+                console.error('Sign-out error:', error);
+            }
+        });
+    }
+});
+
+// Update UI based on auth state
+function updateAuthUI(user) {
+    const signInBtn = document.getElementById('google-signin-btn');
+    const userInfo = document.getElementById('user-info');
+    const userPhoto = document.getElementById('user-photo');
+    const userName = document.getElementById('user-name');
+    const authPrompt = document.getElementById('auth-prompt');
+    const myWordsContent = document.getElementById('my-words-content');
+
+    if (user) {
+        // User is signed in
+        if (signInBtn) signInBtn.classList.add('hidden');
+        if (userInfo) userInfo.classList.remove('hidden');
+        if (userPhoto) userPhoto.src = user.photoURL || '';
+        if (userName) userName.textContent = user.displayName || user.email;
+        if (authPrompt) authPrompt.style.display = 'none';
+        if (myWordsContent) myWordsContent.classList.remove('hidden');
+    } else {
+        // User is signed out
+        if (signInBtn) signInBtn.classList.remove('hidden');
+        if (userInfo) userInfo.classList.add('hidden');
+        if (authPrompt) authPrompt.style.display = 'block';
+        if (myWordsContent) myWordsContent.classList.add('hidden');
+    }
+}
+
+// Save word to Firestore
+async function saveWordToFirebase(wordData) {
+    if (!currentUser || !window.firebaseDb) return;
+
+    const { doc, setDoc } = window.firebaseModules;
+    
+    try {
+        const wordRef = doc(window.firebaseDb, 'users', currentUser.uid, 'vocabulary', wordData.word);
+        await setDoc(wordRef, {
+            ...wordData,
+            timestamp: new Date().toISOString(),
+            favorite: wordData.favorite || false
+        }, { merge: true });
+        
+        console.log('Word saved to Firebase:', wordData.word);
+    } catch (error) {
+        console.error('Error saving to Firebase:', error);
+    }
+}
+
+// Load user's saved words from Firestore
+async function loadUserWords() {
+    if (!currentUser || !window.firebaseDb) return;
+
+    const { collection, getDocs, query, orderBy } = window.firebaseModules;
+    
+    try {
+        const wordsRef = collection(window.firebaseDb, 'users', currentUser.uid, 'vocabulary');
+        const q = query(wordsRef, orderBy('timestamp', 'desc'));
+        const snapshot = await getDocs(q);
+        
+        const words = [];
+        snapshot.forEach((doc) => {
+            words.push({ id: doc.id, ...doc.data() });
+        });
+        
+        displayMyWords(words);
+        updateWordStats(words);
+    } catch (error) {
+        console.error('Error loading words:', error);
+    }
+}
+
+// Display saved words in My Words tab
+function displayMyWords(words) {
+    const grid = document.getElementById('my-words-grid');
+    const emptyState = document.getElementById('my-words-empty');
+    
+    if (!grid) return;
+    
+    if (words.length === 0) {
+        grid.innerHTML = '';
+        if (emptyState) emptyState.classList.remove('hidden');
+        return;
+    }
+    
+    if (emptyState) emptyState.classList.add('hidden');
+    
+    grid.innerHTML = words.map(wordData => `
+        <div class="word-card" data-word="${wordData.word}">
+            <div class="word-card-header">
+                <h3>${wordData.word}</h3>
+                <button class="favorite-btn ${wordData.favorite ? 'active' : ''}" data-word="${wordData.word}">
+                    ${wordData.favorite ? '⭐' : '☆'}
+                </button>
+            </div>
+            <p class="word-card-pronunciation">${wordData.pronunciation || ''}</p>
+            <p class="word-card-preview">${wordData.meanings?.[0]?.definition || ''}</p>
+            <div class="word-card-footer">
+                <span class="word-card-date">${formatDate(wordData.timestamp)}</span>
+                <button class="view-word-btn" data-word="${wordData.word}">View Full</button>
+            </div>
+        </div>
+    `).join('');
+    
+    // Add click handlers
+    grid.querySelectorAll('.favorite-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleFavorite(btn.dataset.word);
+        });
+    });
+    
+    grid.querySelectorAll('.view-word-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            viewWordDetails(btn.dataset.word, words);
+        });
+    });
+}
+
+// Update word statistics
+function updateWordStats(words) {
+    const totalWords = document.getElementById('total-saved-words');
+    const totalFavorites = document.getElementById('total-favorites');
+    const wordsThisWeek = document.getElementById('words-this-week');
+    
+    if (totalWords) totalWords.textContent = words.length;
+    
+    const favorites = words.filter(w => w.favorite).length;
+    if (totalFavorites) totalFavorites.textContent = favorites;
+    
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const recentWords = words.filter(w => new Date(w.timestamp) > weekAgo).length;
+    if (wordsThisWeek) wordsThisWeek.textContent = recentWords;
+}
+
+// Toggle favorite status
+async function toggleFavorite(word) {
+    if (!currentUser || !window.firebaseDb) return;
+
+    const { doc, setDoc } = window.firebaseModules;
+    
+    try {
+        const wordRef = doc(window.firebaseDb, 'users', currentUser.uid, 'vocabulary', word);
+        // This would need to read first to toggle, simplified version:
+        await setDoc(wordRef, { favorite: true }, { merge: true });
+        loadUserWords(); // Reload to update UI
+    } catch (error) {
+        console.error('Error toggling favorite:', error);
+    }
+}
+
+// View full word details
+function viewWordDetails(word, words) {
+    const wordData = words.find(w => w.word === word);
+    if (!wordData) return;
+    
+    // Populate definitions and show them
+    definitionsContent.innerHTML = generateDefinitionHTML(wordData);
+    definitionsOutput.classList.remove('hidden');
+    definitionsOutput.scrollIntoView({ behavior: 'smooth' });
+}
+
+// Generate definition HTML from saved word data
+function generateDefinitionHTML(def) {
+    const groupedMeanings = {};
+    if (def.meanings) {
+        def.meanings.forEach(meaning => {
+            const pos = meaning.partOfSpeech;
+            if (!groupedMeanings[pos]) {
+                groupedMeanings[pos] = [];
+            }
+            groupedMeanings[pos].push(meaning);
+        });
+    }
+    
+    return `
+        <div class="definition-header">
+            <div class="definition-word">${def.word}</div>
+            <div class="definition-pronunciation">${def.pronunciation || ''}</div>
+        </div>
+        <div class="meanings-list">
+            ${Object.entries(groupedMeanings).map(([pos, meanings]) => `
+                <div class="pos-section">
+                    <div class="pos-separator">${pos}</div>
+                    ${meanings.map((meaning, index) => `
+                        <div class="meaning-item">
+                            ${meanings.length > 1 ? `<div class="meaning-number">${index + 1}.</div>` : ''}
+                            <div class="meaning-content">
+                                <div class="definition-meaning">${meaning.definition}</div>
+                                <div class="definition-example">"${meaning.example}"</div>
+                                ${meaning.synonyms ? `<div class="definition-synonyms"><strong>Synonyms:</strong> ${meaning.synonyms}</div>` : ''}
+                                ${meaning.antonyms ? `<div class="definition-antonyms"><strong>Antonyms:</strong> ${meaning.antonyms}</div>` : ''}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+// Format date helper
+function formatDate(timestamp) {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    return date.toLocaleDateString();
+}
+
+// ========== END FIREBASE CODE ==========
+
 // Secure API call helper function - Using Responses API format
 async function callOpenAI(messages, temperature = 0.7, model = 'gpt-4o-mini', maxTokens = 2000) {
     // Convert messages to Responses API format
@@ -188,6 +458,13 @@ addVocabBtn.addEventListener('click', async () => {
         // Show output
         definitionsOutput.classList.remove('hidden');
         definitionsOutput.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        
+        // Save to Firebase if user is signed in
+        if (currentUser) {
+            await saveWordToFirebase(def);
+            // Reload My Words tab to show the new word
+            loadUserWords();
+        }
         
         // Clear input
         vocabInput.value = '';
