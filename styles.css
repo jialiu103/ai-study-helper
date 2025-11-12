@@ -441,7 +441,18 @@ h3 {
     font-size: 1.1rem;
     color: var(--text-primary);
     line-height: 1.6;
-    margin-bottom: 15px;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.definition-chinese {
+    font-size: 1rem;
+    color: var(--primary-color);
+    background: linear-gradient(135deg, #f5f7ff 0%, #e8ecff 100%);
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    border-left: 3px solid var(--primary-color);
     font-weight: 500;
 }
 

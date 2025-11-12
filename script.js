@@ -259,6 +259,7 @@ function generateDefinitionHTML(def) {
                             ${meanings.length > 1 ? `<div class="meaning-number">${index + 1}.</div>` : ''}
                             <div class="meaning-content">
                                 <div class="definition-meaning">${meaning.definition}</div>
+                                ${meaning.chinese ? `<div class="definition-chinese">🇨🇳 ${meaning.chinese}</div>` : ''}
                                 <div class="definition-example">"${meaning.example}"</div>
                                 ${meaning.synonyms ? `<div class="definition-synonyms"><strong>Synonyms:</strong> ${meaning.synonyms}</div>` : ''}
                                 ${meaning.antonyms ? `<div class="definition-antonyms"><strong>Antonyms:</strong> ${meaning.antonyms}</div>` : ''}
@@ -459,6 +460,7 @@ addVocabBtn.addEventListener('click', async () => {
                                 ${meanings.length > 1 ? `<div class="meaning-number">${index + 1}.</div>` : ''}
                                 <div class="meaning-content">
                                     <div class="definition-meaning">${meaning.definition}</div>
+                                    ${meaning.chinese ? `<div class="definition-chinese">🇨🇳 ${meaning.chinese}</div>` : ''}
                                     <div class="definition-example">"${meaning.example}"</div>
                                     ${meaning.synonyms ? `<div class="definition-synonyms"><strong>Synonyms:</strong> ${meaning.synonyms}</div>` : ''}
                                     ${meaning.antonyms ? `<div class="definition-antonyms"><strong>Antonyms:</strong> ${meaning.antonyms}</div>` : ''}
@@ -2099,10 +2101,11 @@ IMPORTANT: Include ALL common meanings/definitions for this word, ordered from M
 
 For each meaning, provide:
 1. Part of speech (noun, verb, adjective, adverb, etc.)
-2. Clear definition (one concise sentence)
-3. An example sentence showing how it's used in context
-4. 2-3 common synonyms (if applicable)
-5. 2-3 antonyms (if applicable)
+2. Clear English definition (one concise sentence)
+3. Chinese translation (中文释义) of the definition
+4. An example sentence showing how it's used in context
+5. 2-3 common synonyms (if applicable)
+6. 2-3 antonyms (if applicable)
 
 Also include:
 - Pronunciation guide (phonetic spelling)
@@ -2115,6 +2118,7 @@ Format as JSON with this EXACT structure:
     {
       "partOfSpeech": "verb",
       "definition": "to move swiftly on foot",
+      "chinese": "快速移动；跑步",
       "example": "She likes to run every morning.",
       "synonyms": "sprint, jog, dash",
       "antonyms": "walk, stop, rest"
@@ -2122,6 +2126,7 @@ Format as JSON with this EXACT structure:
     {
       "partOfSpeech": "verb",
       "definition": "to operate or function",
+      "chinese": "运行；操作",
       "example": "The engine runs smoothly.",
       "synonyms": "operate, function, work",
       "antonyms": "malfunction, break, stop"
@@ -2129,6 +2134,7 @@ Format as JSON with this EXACT structure:
     {
       "partOfSpeech": "noun",
       "definition": "an act of running",
+      "chinese": "跑步；奔跑",
       "example": "I went for a morning run.",
       "synonyms": "jog, sprint",
       "antonyms": "rest, stop"
@@ -2136,7 +2142,7 @@ Format as JSON with this EXACT structure:
   ]
 }
 
-Return ONLY the JSON object for the FIRST word (${words[0]}), no other text. Include ALL common meanings.`;
+Return ONLY the JSON object for the FIRST word (${words[0]}), no other text. Include ALL common meanings with Chinese translations.`;
 
     const response = await callOpenAI([
         {
