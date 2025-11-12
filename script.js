@@ -2259,9 +2259,13 @@ function updateDashboard() {
     const thisWeek = Object.values(weeklyActivity).reduce((a, b) => a + b, 0);
     const storiesGenerated = parseInt(localStorage.getItem('storiesGenerated') || '0');
     
-    document.getElementById('total-words').textContent = totalWords;
-    document.getElementById('this-week').textContent = thisWeek;
-    document.getElementById('stories-generated').textContent = storiesGenerated;
+    const totalWordsEl = document.getElementById('total-words');
+    const thisWeekEl = document.getElementById('this-week');
+    const storiesGeneratedEl = document.getElementById('stories-generated');
+    
+    if (totalWordsEl) totalWordsEl.textContent = totalWords;
+    if (thisWeekEl) thisWeekEl.textContent = thisWeek;
+    if (storiesGeneratedEl) storiesGeneratedEl.textContent = storiesGenerated;
     
     renderWeeklyChart();
     renderVocabularyGrid();
