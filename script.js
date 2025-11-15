@@ -298,10 +298,14 @@ async function callOpenAI(messages, temperature = 0.7, model = 'gpt-4o-mini', ma
                 if (typeof c === 'string') return { type: 'input_text', text: c };
                 if (c.type === 'text') return { type: 'input_text', text: c.text };
                 if (c.type === 'image_url') {
-                    // Convert image_url format to input_image format (simplified for worker)
+                    // For Responses API with vision
+                    const base64Data = c.image_url.url;
                     return {
                         type: 'input_image',
-                        data: c.image_url.url.split(',')[1] // Extract base64 data without prefix
+                        source: {
+                            type: 'url',
+                            url: base64Data
+                        }
                     };
                 }
                 return c;

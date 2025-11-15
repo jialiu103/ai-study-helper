@@ -6,7 +6,7 @@
 const OPENAI_API_KEY = 'YOUR_OPENAI_API_KEY_HERE';
 
 // API Configuration - Easy to switch between endpoints
-const USE_RESPONSES_API = false; // Using Chat Completions for now
+const USE_RESPONSES_API = true; // Using Responses API
 const CHAT_ENDPOINT = 'https://api.openai.com/v1/chat/completions';
 const RESPONSES_ENDPOINT = 'https://api.openai.com/v1/responses';
 
