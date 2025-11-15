@@ -4176,8 +4176,10 @@ async function checkGamesAvailability() {
         gamesSelection?.classList.add('hidden');
     } else {
         console.log('Enough words! Showing games');
+        console.log('Before removal - games-selection classes:', gamesSelection?.className);
         gamesEmpty?.classList.add('hidden');
         gamesSelection?.classList.remove('hidden');
+        console.log('After removal - games-selection classes:', gamesSelection?.className);
         gamesData.words = savedWords;
         console.log('Games data loaded with', gamesData.words.length, 'words');
     }
