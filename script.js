@@ -298,30 +298,12 @@ async function callOpenAI(messages, temperature = 0.7, model = 'gpt-4o-mini', ma
                 if (typeof c === 'string') return { type: 'input_text', text: c };
                 if (c.type === 'text') return { type: 'input_text', text: c.text };
                 if (c.type === 'image_url') {
-                    // For Responses API with vision - use base64 source
-                    const base64Data = c.image_url.url;
-                    // Check if it's a data URL
-                    if (base64Data.startsWith('data:')) {
-                        const [header, data] = base64Data.split(',');
-                        const mediaType = header.match(/data:([^;]+)/)?.[1] || 'image/jpeg';
-                        return {
-                            type: 'input_image',
-                            source: {
-                                type: 'base64',
-                                media_type: mediaType,
-                                data: data
-                            }
-                        };
-                    } else {
-                        // It's a URL
-                        return {
-                            type: 'input_image',
-                            source: {
-                                type: 'url',
-                                url: base64Data
-                            }
-                        };
-                    }
+                    // For Responses API with vision - keep it simple
+                    // Just pass the data URL directly
+                    return {
+                        type: 'input_image',
+                        url: c.image_url.url
+                    };
                 }
                 return c;
               })
