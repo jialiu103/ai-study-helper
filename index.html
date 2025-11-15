@@ -45,6 +45,7 @@
             <button class="tab-btn active" data-tab="vocabulary">Lookup</button>
             <button class="tab-btn" data-tab="review">My Words</button>
             <button class="tab-btn" data-tab="homework">📸 Homework Helper</button>
+            <button class="tab-btn" data-tab="games">🎮 Practice Games</button>
         </nav>
 
         <main>
@@ -235,6 +236,157 @@ We'll identify all the vocabulary words and explain them!" rows="6"></textarea>
                         </div>
                     </div>
                 </div>
+
+            <!-- Practice Games Tab -->
+            <section id="games-tab" class="tab-content">
+                <div class="games-container">
+                    <h2>🎮 Practice Games</h2>
+                    <p class="instructions">Master your vocabulary through fun games!</p>
+                    
+                    <div id="games-empty" class="empty-state">
+                        <div class="empty-icon">📚</div>
+                        <p>Save some words first to start playing!</p>
+                        <p class="hint">Go to "My Words" or use "Homework Helper" to add vocabulary.</p>
+                    </div>
+
+                    <div id="games-selection" class="games-grid hidden">
+                        <div class="game-card" data-game="matching">
+                            <div class="game-icon">🎯</div>
+                            <h3>Match It!</h3>
+                            <p>Match words with their definitions</p>
+                            <button class="btn game-start-btn">Play</button>
+                        </div>
+
+                        <div class="game-card" data-game="flashcards">
+                            <div class="game-icon">🎴</div>
+                            <h3>Flashcards</h3>
+                            <p>Quiz yourself with flashcards</p>
+                            <button class="btn game-start-btn">Play</button>
+                        </div>
+
+                        <div class="game-card" data-game="fillblank">
+                            <div class="game-icon">✏️</div>
+                            <h3>Fill the Blank</h3>
+                            <p>Complete sentences with the right word</p>
+                            <button class="btn game-start-btn">Play</button>
+                        </div>
+
+                        <div class="game-card" data-game="spelling">
+                            <div class="game-icon">🔤</div>
+                            <h3>Spelling Bee</h3>
+                            <p>Type the word you hear</p>
+                            <button class="btn game-start-btn">Play</button>
+                        </div>
+                    </div>
+
+                    <!-- Matching Game -->
+                    <div id="matching-game" class="game-area hidden">
+                        <div class="game-header">
+                            <h3>🎯 Match It!</h3>
+                            <div class="game-stats">
+                                <span>Score: <strong id="matching-score">0</strong></span>
+                                <span>Time: <strong id="matching-time">0:00</strong></span>
+                            </div>
+                            <button class="btn-secondary" id="matching-quit">Quit</button>
+                        </div>
+                        <div class="matching-board" id="matching-board"></div>
+                        <div id="matching-complete" class="game-complete hidden">
+                            <h3>🎉 Awesome Job!</h3>
+                            <p class="final-score"></p>
+                            <button class="btn" id="matching-replay">Play Again</button>
+                            <button class="btn-secondary" id="matching-menu">Main Menu</button>
+                        </div>
+                    </div>
+
+                    <!-- Flashcards Game -->
+                    <div id="flashcards-game" class="game-area hidden">
+                        <div class="game-header">
+                            <h3>🎴 Flashcards</h3>
+                            <div class="game-stats">
+                                <span>Card: <strong><span id="flashcard-current">1</span>/<span id="flashcard-total">10</span></strong></span>
+                                <span>Correct: <strong id="flashcard-correct">0</strong></span>
+                            </div>
+                            <button class="btn-secondary" id="flashcard-quit">Quit</button>
+                        </div>
+                        <div class="flashcard-container">
+                            <div class="flashcard" id="flashcard">
+                                <div class="flashcard-front">
+                                    <div class="flashcard-word"></div>
+                                </div>
+                                <div class="flashcard-back">
+                                    <div class="flashcard-definition"></div>
+                                </div>
+                            </div>
+                            <div class="flashcard-controls">
+                                <button class="btn" id="flashcard-flip">Flip Card</button>
+                            </div>
+                            <div class="flashcard-answers hidden" id="flashcard-answers">
+                                <button class="btn btn-success" id="flashcard-know">I Know It! ✓</button>
+                                <button class="btn btn-warning" id="flashcard-learning">Still Learning</button>
+                            </div>
+                        </div>
+                        <div id="flashcard-complete" class="game-complete hidden">
+                            <h3>🎉 Great Practice!</h3>
+                            <p class="final-score"></p>
+                            <button class="btn" id="flashcard-replay">Practice Again</button>
+                            <button class="btn-secondary" id="flashcard-menu">Main Menu</button>
+                        </div>
+                    </div>
+
+                    <!-- Fill the Blank Game -->
+                    <div id="fillblank-game" class="game-area hidden">
+                        <div class="game-header">
+                            <h3>✏️ Fill the Blank</h3>
+                            <div class="game-stats">
+                                <span>Question: <strong><span id="fillblank-current">1</span>/<span id="fillblank-total">10</span></strong></span>
+                                <span>Score: <strong id="fillblank-score">0</strong></span>
+                            </div>
+                            <button class="btn-secondary" id="fillblank-quit">Quit</button>
+                        </div>
+                        <div class="fillblank-question">
+                            <p class="sentence" id="fillblank-sentence"></p>
+                            <div class="word-choices" id="fillblank-choices"></div>
+                            <div id="fillblank-feedback" class="feedback hidden"></div>
+                        </div>
+                        <div id="fillblank-complete" class="game-complete hidden">
+                            <h3>🎉 Well Done!</h3>
+                            <p class="final-score"></p>
+                            <button class="btn" id="fillblank-replay">Play Again</button>
+                            <button class="btn-secondary" id="fillblank-menu">Main Menu</button>
+                        </div>
+                    </div>
+
+                    <!-- Spelling Bee Game -->
+                    <div id="spelling-game" class="game-area hidden">
+                        <div class="game-header">
+                            <h3>🔤 Spelling Bee</h3>
+                            <div class="game-stats">
+                                <span>Word: <strong><span id="spelling-current">1</span>/<span id="spelling-total">10</span></strong></span>
+                                <span>Score: <strong id="spelling-score">0</strong></span>
+                            </div>
+                            <button class="btn-secondary" id="spelling-quit">Quit</button>
+                        </div>
+                        <div class="spelling-question">
+                            <div class="audio-prompt">
+                                <button class="btn btn-large" id="spelling-play">
+                                    🔊 Play Word
+                                </button>
+                                <p class="hint">Listen carefully and type the word!</p>
+                            </div>
+                            <div class="spelling-definition" id="spelling-definition"></div>
+                            <input type="text" id="spelling-input" class="spelling-input" placeholder="Type the word here..." autocomplete="off">
+                            <button class="btn" id="spelling-submit">Submit</button>
+                            <div id="spelling-feedback" class="feedback hidden"></div>
+                        </div>
+                        <div id="spelling-complete" class="game-complete hidden">
+                            <h3>🎉 Fantastic!</h3>
+                            <p class="final-score"></p>
+                            <button class="btn" id="spelling-replay">Play Again</button>
+                            <button class="btn-secondary" id="spelling-menu">Main Menu</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
 ```
         </main>
 
@@ -334,7 +486,7 @@ We'll identify all the vocabulary words and explain them!" rows="6"></textarea>
         };
     </script>
     
-    <script src="script.js?v=2.6"></script>
+    <script src="script.js?v=2.7"></script>
     
     <script>
         if ('serviceWorker' in navigator) {

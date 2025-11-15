@@ -4093,3 +4093,550 @@ if ('serviceWorker' in navigator) {
             });
     });
 }
+
+// ============================================
+// PRACTICE GAMES
+// ============================================
+
+let gamesData = {
+    words: [],
+    currentGame: null,
+    currentIndex: 0,
+    score: 0,
+    timer: null,
+    startTime: null
+};
+
+// Initialize Games Tab
+function initGames() {
+    console.log('Initializing Practice Games...');
+    
+    // Check if user has saved words
+    checkGamesAvailability();
+    
+    // Game selection listeners
+    document.querySelectorAll('.game-start-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const gameType = this.closest('.game-card').dataset.game;
+            startGame(gameType);
+        });
+    });
+    
+    // Quit buttons
+    document.getElementById('matching-quit')?.addEventListener('click', () => quitGame('matching'));
+    document.getElementById('flashcard-quit')?.addEventListener('click', () => quitGame('flashcards'));
+    document.getElementById('fillblank-quit')?.addEventListener('click', () => quitGame('fillblank'));
+    document.getElementById('spelling-quit')?.addEventListener('click', () => quitGame('spelling'));
+    
+    // Replay buttons
+    document.getElementById('matching-replay')?.addEventListener('click', () => startGame('matching'));
+    document.getElementById('flashcard-replay')?.addEventListener('click', () => startGame('flashcards'));
+    document.getElementById('fillblank-replay')?.addEventListener('click', () => startGame('fillblank'));
+    document.getElementById('spelling-replay')?.addEventListener('click', () => startGame('spelling'));
+    
+    // Menu buttons
+    document.getElementById('matching-menu')?.addEventListener('click', showGameMenu);
+    document.getElementById('flashcard-menu')?.addEventListener('click', showGameMenu);
+    document.getElementById('fillblank-menu')?.addEventListener('click', showGameMenu);
+    document.getElementById('spelling-menu')?.addEventListener('click', showGameMenu);
+}
+
+async function checkGamesAvailability() {
+    if (!currentUser) {
+        document.getElementById('games-empty').classList.remove('hidden');
+        document.getElementById('games-selection').classList.add('hidden');
+        return;
+    }
+    
+    const savedWords = await loadUserWords();
+    
+    if (savedWords.length < 4) {
+        document.getElementById('games-empty').classList.remove('hidden');
+        document.getElementById('games-selection').classList.add('hidden');
+    } else {
+        document.getElementById('games-empty').classList.add('hidden');
+        document.getElementById('games-selection').classList.remove('hidden');
+        gamesData.words = savedWords;
+    }
+}
+
+function showGameMenu() {
+    // Hide all game areas
+    document.getElementById('matching-game').classList.add('hidden');
+    document.getElementById('flashcards-game').classList.add('hidden');
+    document.getElementById('fillblank-game').classList.add('hidden');
+    document.getElementById('spelling-game').classList.add('hidden');
+    
+    // Show game selection
+    document.getElementById('games-selection').classList.remove('hidden');
+}
+
+function quitGame(gameType) {
+    if (gamesData.timer) clearInterval(gamesData.timer);
+    showGameMenu();
+}
+
+function shuffleArray(array) {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+}
+
+// ============================================
+// MATCHING GAME
+// ============================================
+
+function startGame(gameType) {
+    gamesData.currentGame = gameType;
+    gamesData.score = 0;
+    gamesData.currentIndex = 0;
+    
+    // Hide game selection
+    document.getElementById('games-selection').classList.add('hidden');
+    
+    if (gameType === 'matching') {
+        startMatchingGame();
+    } else if (gameType === 'flashcards') {
+        startFlashcardsGame();
+    } else if (gameType === 'fillblank') {
+        startFillBlankGame();
+    } else if (gameType === 'spelling') {
+        startSpellingGame();
+    }
+}
+
+function startMatchingGame() {
+    console.log('Starting Matching Game...');
+    
+    // Select random words (max 6 pairs)
+    const gameWords = shuffleArray(gamesData.words).slice(0, 6);
+    
+    // Create cards
+    const words = gameWords.map(w => ({ type: 'word', text: w.word, id: w.word }));
+    const definitions = gameWords.map(w => ({ 
+        type: 'definition', 
+        text: w.meanings[0].definition, 
+        id: w.word 
+    }));
+    
+    const allCards = shuffleArray([...words, ...definitions]);
+    
+    // Reset game state
+    gamesData.matchingState = {
+        cards: allCards,
+        selected: [],
+        matched: [],
+        score: 0,
+        startTime: Date.now()
+    };
+    
+    // Render board
+    const board = document.getElementById('matching-board');
+    board.innerHTML = allCards.map((card, index) => `
+        <div class="match-card ${card.type}" data-index="${index}" data-id="${card.id}">
+            ${card.text}
+        </div>
+    `).join('');
+    
+    // Add click listeners
+    board.querySelectorAll('.match-card').forEach(card => {
+        card.addEventListener('click', handleMatchClick);
+    });
+    
+    // Show game
+    document.getElementById('matching-game').classList.remove('hidden');
+    document.getElementById('matching-complete').classList.add('hidden');
+    document.getElementById('matching-score').textContent = '0';
+    
+    // Start timer
+    startMatchingTimer();
+}
+
+function startMatchingTimer() {
+    let seconds = 0;
+    gamesData.timer = setInterval(() => {
+        seconds++;
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        document.getElementById('matching-time').textContent = 
+            `${mins}:${secs.toString().padStart(2, '0')}`;
+    }, 1000);
+}
+
+function handleMatchClick(e) {
+    const card = e.currentTarget;
+    const state = gamesData.matchingState;
+    
+    // Ignore if already matched or selected
+    if (card.classList.contains('matched') || card.classList.contains('selected')) {
+        return;
+    }
+    
+    // Select card
+    card.classList.add('selected');
+    state.selected.push({
+        element: card,
+        id: card.dataset.id,
+        index: card.dataset.index
+    });
+    
+    // Check for match when 2 cards selected
+    if (state.selected.length === 2) {
+        setTimeout(() => checkMatch(), 500);
+    }
+}
+
+function checkMatch() {
+    const state = gamesData.matchingState;
+    const [card1, card2] = state.selected;
+    
+    if (card1.id === card2.id) {
+        // Match!
+        card1.element.classList.remove('selected');
+        card2.element.classList.remove('selected');
+        card1.element.classList.add('matched');
+        card2.element.classList.add('matched');
+        state.matched.push(card1.id);
+        state.score += 10;
+        document.getElementById('matching-score').textContent = state.score;
+        
+        // Check if game complete
+        if (state.matched.length === state.cards.length / 2) {
+            completeMatchingGame();
+        }
+    } else {
+        // No match
+        card1.element.classList.add('wrong');
+        card2.element.classList.add('wrong');
+        
+        setTimeout(() => {
+            card1.element.classList.remove('selected', 'wrong');
+            card2.element.classList.remove('selected', 'wrong');
+        }, 1000);
+    }
+    
+    state.selected = [];
+}
+
+function completeMatchingGame() {
+    clearInterval(gamesData.timer);
+    const elapsed = Math.floor((Date.now() - gamesData.matchingState.startTime) / 1000);
+    const mins = Math.floor(elapsed / 60);
+    const secs = elapsed % 60;
+    
+    document.getElementById('matching-complete').classList.remove('hidden');
+    document.querySelector('#matching-complete .final-score').textContent = 
+        `You matched all pairs in ${mins}:${secs.toString().padStart(2, '0')}! Score: ${gamesData.matchingState.score}`;
+}
+
+// ============================================
+// FLASHCARDS GAME
+// ============================================
+
+function startFlashcardsGame() {
+    console.log('Starting Flashcards Game...');
+    
+    gamesData.flashcardState = {
+        words: shuffleArray(gamesData.words).slice(0, 10),
+        currentIndex: 0,
+        correct: 0,
+        isFlipped: false
+    };
+    
+    document.getElementById('flashcards-game').classList.remove('hidden');
+    document.getElementById('flashcard-complete').classList.add('hidden');
+    document.getElementById('flashcard-answers').classList.add('hidden');
+    
+    showFlashcard();
+    
+    // Flip card listener
+    document.getElementById('flashcard-flip').onclick = flipFlashcard;
+    document.getElementById('flashcard').onclick = flipFlashcard;
+    document.getElementById('flashcard-know').onclick = () => answerFlashcard(true);
+    document.getElementById('flashcard-learning').onclick = () => answerFlashcard(false);
+}
+
+function showFlashcard() {
+    const state = gamesData.flashcardState;
+    const word = state.words[state.currentIndex];
+    
+    // Reset card
+    document.getElementById('flashcard').classList.remove('flipped');
+    state.isFlipped = false;
+    
+    // Update content
+    document.querySelector('.flashcard-word').textContent = word.word;
+    document.querySelector('.flashcard-definition').textContent = word.meanings[0].definition;
+    
+    // Update stats
+    document.getElementById('flashcard-current').textContent = state.currentIndex + 1;
+    document.getElementById('flashcard-total').textContent = state.words.length;
+    document.getElementById('flashcard-correct').textContent = state.correct;
+    
+    // Show/hide controls
+    document.getElementById('flashcard-answers').classList.add('hidden');
+}
+
+function flipFlashcard() {
+    const card = document.getElementById('flashcard');
+    const isFlipped = card.classList.toggle('flipped');
+    gamesData.flashcardState.isFlipped = isFlipped;
+    
+    if (isFlipped) {
+        document.getElementById('flashcard-answers').classList.remove('hidden');
+    }
+}
+
+function answerFlashcard(knowIt) {
+    const state = gamesData.flashcardState;
+    
+    if (knowIt) {
+        state.correct++;
+    }
+    
+    state.currentIndex++;
+    
+    if (state.currentIndex >= state.words.length) {
+        completeFlashcardsGame();
+    } else {
+        showFlashcard();
+    }
+}
+
+function completeFlashcardsGame() {
+    const state = gamesData.flashcardState;
+    const percentage = Math.round((state.correct / state.words.length) * 100);
+    
+    document.getElementById('flashcard-complete').classList.remove('hidden');
+    document.querySelector('#flashcard-complete .final-score').textContent = 
+        `You knew ${state.correct} out of ${state.words.length} words! That's ${percentage}%!`;
+}
+
+// ============================================
+// FILL THE BLANK GAME
+// ============================================
+
+async function startFillBlankGame() {
+    console.log('Starting Fill the Blank Game...');
+    
+    const gameWords = shuffleArray(gamesData.words).slice(0, 10);
+    
+    gamesData.fillblankState = {
+        words: gameWords,
+        currentIndex: 0,
+        score: 0
+    };
+    
+    document.getElementById('fillblank-game').classList.remove('hidden');
+    document.getElementById('fillblank-complete').classList.add('hidden');
+    
+    showFillBlankQuestion();
+}
+
+async function showFillBlankQuestion() {
+    const state = gamesData.fillblankState;
+    const word = state.words[state.currentIndex];
+    
+    // Generate sentence with AI
+    const prompt = `Create a simple sentence for a middle school student using the word "${word.word}". Return ONLY the sentence with the word "${word.word}" replaced by "____".`;
+    
+    try {
+        const response = await callOpenAI([
+            { role: 'system', content: 'You are a helpful vocabulary teacher.' },
+            { role: 'user', content: prompt }
+        ], 0.7, 'gpt-4o-mini', 100);
+        
+        const sentence = response.choices[0].message.content.trim();
+        
+        // Show question
+        document.getElementById('fillblank-sentence').innerHTML = sentence;
+        
+        // Generate choices (correct word + 3 random words)
+        const otherWords = gamesData.words
+            .filter(w => w.word !== word.word)
+            .sort(() => Math.random() - 0.5)
+            .slice(0, 3)
+            .map(w => w.word);
+        
+        const choices = shuffleArray([word.word, ...otherWords]);
+        
+        // Show choices
+        const choicesContainer = document.getElementById('fillblank-choices');
+        choicesContainer.innerHTML = choices.map(choice => `
+            <button class="choice-btn" data-word="${choice}">${choice}</button>
+        `).join('');
+        
+        // Add listeners
+        choicesContainer.querySelectorAll('.choice-btn').forEach(btn => {
+            btn.addEventListener('click', () => checkFillBlankAnswer(btn, word.word));
+        });
+        
+        // Update stats
+        document.getElementById('fillblank-current').textContent = state.currentIndex + 1;
+        document.getElementById('fillblank-total').textContent = state.words.length;
+        document.getElementById('fillblank-score').textContent = state.score;
+        document.getElementById('fillblank-feedback').classList.add('hidden');
+        
+    } catch (error) {
+        console.error('Error generating sentence:', error);
+        // Fallback: use definition
+        const sentence = word.meanings[0].definition.replace(word.word, '____');
+        document.getElementById('fillblank-sentence').innerHTML = sentence;
+    }
+}
+
+function checkFillBlankAnswer(btn, correctWord) {
+    const state = gamesData.fillblankState;
+    const chosen = btn.dataset.word;
+    const feedback = document.getElementById('fillblank-feedback');
+    
+    // Disable all buttons
+    document.querySelectorAll('.choice-btn').forEach(b => b.disabled = true);
+    
+    if (chosen === correctWord) {
+        btn.classList.add('correct');
+        state.score += 10;
+        feedback.textContent = '✓ Correct! Great job!';
+        feedback.className = 'feedback correct';
+    } else {
+        btn.classList.add('wrong');
+        document.querySelector(`[data-word="${correctWord}"]`).classList.add('correct');
+        feedback.textContent = `✗ The correct answer is "${correctWord}"`;
+        feedback.className = 'feedback wrong';
+    }
+    
+    feedback.classList.remove('hidden');
+    
+    // Next question after delay
+    setTimeout(() => {
+        state.currentIndex++;
+        if (state.currentIndex >= state.words.length) {
+            completeFillBlankGame();
+        } else {
+            showFillBlankQuestion();
+        }
+    }, 2000);
+}
+
+function completeFillBlankGame() {
+    const state = gamesData.fillblankState;
+    const percentage = Math.round((state.score / (state.words.length * 10)) * 100);
+    
+    document.getElementById('fillblank-complete').classList.remove('hidden');
+    document.querySelector('#fillblank-complete .final-score').textContent = 
+        `You scored ${state.score} points! That's ${percentage}%!`;
+}
+
+// ============================================
+// SPELLING BEE GAME
+// ============================================
+
+function startSpellingGame() {
+    console.log('Starting Spelling Bee Game...');
+    
+    gamesData.spellingState = {
+        words: shuffleArray(gamesData.words).slice(0, 10),
+        currentIndex: 0,
+        score: 0
+    };
+    
+    document.getElementById('spelling-game').classList.remove('hidden');
+    document.getElementById('spelling-complete').classList.add('hidden');
+    
+    showSpellingQuestion();
+    
+    // Play button
+    document.getElementById('spelling-play').onclick = playSpellingAudio;
+    
+    // Submit button
+    document.getElementById('spelling-submit').onclick = checkSpellingAnswer;
+    
+    // Enter key to submit
+    document.getElementById('spelling-input').onkeypress = (e) => {
+        if (e.key === 'Enter') checkSpellingAnswer();
+    };
+}
+
+function showSpellingQuestion() {
+    const state = gamesData.spellingState;
+    const word = state.words[state.currentIndex];
+    
+    // Clear input
+    document.getElementById('spelling-input').value = '';
+    document.getElementById('spelling-feedback').classList.add('hidden');
+    
+    // Show definition as hint
+    document.getElementById('spelling-definition').textContent = 
+        `Hint: ${word.meanings[0].definition}`;
+    
+    // Update stats
+    document.getElementById('spelling-current').textContent = state.currentIndex + 1;
+    document.getElementById('spelling-total').textContent = state.words.length;
+    document.getElementById('spelling-score').textContent = state.score;
+    
+    // Auto-play word
+    playSpellingAudio();
+}
+
+function playSpellingAudio() {
+    const state = gamesData.spellingState;
+    const word = state.words[state.currentIndex].word;
+    
+    // Use Web Speech API
+    const utterance = new SpeechSynthesisUtterance(word);
+    utterance.rate = 0.8; // Slower speed
+    utterance.pitch = 1;
+    utterance.volume = 1;
+    
+    speechSynthesis.cancel(); // Stop any current speech
+    speechSynthesis.speak(utterance);
+}
+
+function checkSpellingAnswer() {
+    const state = gamesData.spellingState;
+    const word = state.words[state.currentIndex].word;
+    const input = document.getElementById('spelling-input').value.trim().toLowerCase();
+    const feedback = document.getElementById('spelling-feedback');
+    
+    if (!input) return;
+    
+    if (input === word.toLowerCase()) {
+        state.score += 10;
+        feedback.textContent = `✓ Perfect! "${word}" is correct!`;
+        feedback.className = 'feedback correct';
+    } else {
+        feedback.textContent = `✗ Not quite. The correct spelling is "${word}"`;
+        feedback.className = 'feedback wrong';
+    }
+    
+    feedback.classList.remove('hidden');
+    
+    // Next question after delay
+    setTimeout(() => {
+        state.currentIndex++;
+        if (state.currentIndex >= state.words.length) {
+            completeSpellingGame();
+        } else {
+            showSpellingQuestion();
+        }
+    }, 2500);
+}
+
+function completeSpellingGame() {
+    const state = gamesData.spellingState;
+    const percentage = Math.round((state.score / (state.words.length * 10)) * 100);
+    
+    document.getElementById('spelling-complete').classList.remove('hidden');
+    document.querySelector('#spelling-complete .final-score').textContent = 
+        `You scored ${state.score} points! That's ${percentage}%!`;
+}
+
+// Initialize games when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initGames);
+} else {
+    initGames();
+}
